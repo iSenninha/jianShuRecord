@@ -119,6 +119,18 @@
   ```
 
 
+> 其实这个run方法可以看成是javac
+>
+> 既然说是javac，那么后面可以跟很多参数啊，是的没错，run后面有个变长的String参数
+>
+> 比如要依赖jar包编译
+>
+> compiler.run(null, null, null, "-cp", "/tmp/Server.jar", "java文件路径");
+
+
+
+
+
 
 - java代码操作cmd
 
