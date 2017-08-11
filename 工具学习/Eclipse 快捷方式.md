@@ -45,7 +45,7 @@
   | ctrl + shift + k(自定义) |              生成toString()方法              |
   | ctrl + shift + h(自定义) |                  生成构造方法                  |
   |  shift + enter(自定义)   |                 加入一个空白行                  |
-  | ctrl + shift + T（自定义） |                try-catch                 |
+  | ctrl + shift + D（自定义） |                try-catch                 |
   |    alt + shift + r    |     重构某个字段，如果是成员变量，按两次，同步修改get set方法     |
   |    alt + shift + L    | 在某个String的内容上选，然后会自动替换掉当前范围内都是同一个String的内容 |
   |      ctrl + 2,L       | String.valueOf("se") 前面的变量名还没有设置，这个时候按ctrl + 2等一下再按2，就会生成变量了 |
