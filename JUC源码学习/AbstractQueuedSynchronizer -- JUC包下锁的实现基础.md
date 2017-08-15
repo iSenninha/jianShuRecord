@@ -470,3 +470,72 @@ final boolean nonfairTryAcquire(int acquires) {
 > 公平锁：获取锁-->检查是否有等待队列，无----尝试获取独占锁(state,exclusiveOwnerThread)--->失败，入队等待获取锁---->满足挂起条件，挂起，出队获取到锁的那个节点，唤醒后驱节点取获取锁。
 >
 > 非公平锁：差别就是获取锁的那里不去检查是否由等待队列。(tryAcquire()的实现的不同)
+
+
+
+### Condition 还有一个重要的功能就是Condition
+
+condition的功能就是用来替代Object的wait监视器功能的，典型用法如下：
+
+```
+ReentrantLock lock = new ReentrantLock(false);
+lock.lock();
+Condition condition = lock.newCondition();
+condition.await();//必须先获取监视器lock再await();注意这里1
+
+然后另外一个持有同样的condition(必须是同一个condition才可以唤醒)
+condtion.singnal();//注意这里2
+```
+
+1. 首先，一个已经获取锁的线程是独占了AQS的status和AOS的exclusiveThread，调用await方法的时候，会检查是否是独占线程--->加入同一个Condition对象(持有first，last节点Node)的等待队列，然后释放调用ASQ的release方法释放掉独占锁，然后LockSupport休眠;（见await代码）
+2. 由1可知，同一个Condition对象上一个Node节点代表的就是一个等待线程，调用signal同样要先获取到lock监视器，然后找到下一个需要唤醒的节点，让这个节点入队，没错，就是入队，入到AQS的等待队列，然后直接唤醒(见下面***注意3***)，这也就解释了为什么一个await()后唤醒的线程需要重新获取到监视器。
+3. 另外，重入锁还支持等待中中断之类的，这些坑之后再来填;
+4. 另外，使用ReentrantLock类工具一定要记得在finally里释放锁，释放锁，不然就要死锁了。。
+
+```
+//await代码
+public final void await() throws InterruptedException {
+            if (Thread.interrupted())
+                throw new InterruptedException();
+            Node node = addConditionWaiter();
+            int savedState = fullyRelease(node);//往下调用的是tryRelease()方法，在这里就已经解除独占status和exclusiveThread了
+            int interruptMode = 0;
+            while (!isOnSyncQueue(node)) {
+                LockSupport.park(this);//挂起线程
+                if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
+                    break;
+            }
+            if (acquireQueued(node, savedState) && interruptMode != THROW_IE)//尝试重新获取锁
+                interruptMode = REINTERRUPT;
+            if (node.nextWaiter != null) // clean up if cancelled
+                unlinkCancelledWaiters();
+            if (interruptMode != 0)
+                reportInterruptAfterWait(interruptMode);
+        }
+```
+
+
+
+```
+//唤醒的代码
+final boolean transferForSignal(Node node) {
+        /*
+         * If cannot change waitStatus, the node has been cancelled.
+         */
+        if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
+            return false;
+
+        /*
+         * Splice onto queue and try to set waitStatus of predecessor to
+         * indicate that thread is (probably) waiting. If cancelled or
+         * attempt to set waitStatus fails, wake up to resync (in which
+         * case the waitStatus can be transiently and harmlessly wrong).
+         */
+        Node p = enq(node);//唤醒锁的地方，入队
+        int ws = p.waitStatus;
+        if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
+            LockSupport.unpark(node.thread);//唤醒获取锁 注意3
+        return true;
+    }
+```
+
