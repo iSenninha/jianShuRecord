@@ -224,7 +224,7 @@ AbstractQueuedSynchronizer -- JUC包下锁的实现基础
       }
   ```
 
-  跳进tryAcquire()发现这是个在AQS里未实现的方法（抛出UnsupportException），继续debug，可以发现其实是跳到了FairSync的tyrAcquire()去执行，即是需要子类去实现：
+  跳进tryAcquire()发现这是个在AQS里未实现的方法（抛出UnsupportException），继续debug，可以发现其实是跳到了FairSync的tyrAcquire()去执行，即是需要子类去实现，另外，公平锁和非公平锁的区别就是这里，ReentrantLock的非公平锁在这里是调用***nonfairTryAcquire()（见本页最后）***去实现的：
 
   ```
    protected final boolean tryAcquire(int acquires) {
@@ -273,7 +273,52 @@ AbstractQueuedSynchronizer -- JUC包下锁的实现基础
 acquireQueued(addWaiter(Node.EXCLUSIVE), arg)
 ```
 
-​	其实就是加入等待队列addWaiter，并且一直自旋等待出队列。出队列方法如下：
+​	其实就是加入等待队列addWaiter:
+
+```
+ private Node addWaiter(Node mode) {
+        Node node = new Node(Thread.currentThread(), mode);
+        // Try the fast path of enq; backup to full enq on failure
+        Node pred = tail;
+        if (pred != null) {
+            node.prev = pred;
+            if (compareAndSetTail(pred, node)) {//注意这里1
+                pred.next = node;
+                return node;
+            }
+        }
+        enq(node);//注意这里2
+        return node;
+    }
+```
+
+1.如果无竞争直接cas入队成功
+
+2.如果由竞争，进入enq()进行自旋入队
+
+```
+ private Node enq(final Node node) {
+        for (;;) {
+            Node t = tail;
+            if (t == null) { // Must initialize
+                if (compareAndSetHead(new Node()))
+                    tail = head;
+            } else {
+                node.prev = t;
+                if (compareAndSetTail(t, node)) {
+                    t.next = node;
+                    return t;
+                }
+            }
+        }
+    }
+```
+
+就是一个cas操作，直到成功。
+
+
+
+入队成功后就是尝试出队获取到独占锁了，出队列方法如下：
 
 ```
   final boolean acquireQueued(final Node node, int arg) {
@@ -282,24 +327,66 @@ acquireQueued(addWaiter(Node.EXCLUSIVE), arg)
             boolean interrupted = false;
             for (;;) {
                 final Node p = node.predecessor();
-                if (p == head && tryAcquire(arg)) {//又是tryAcquire方法
+                if (p == head && tryAcquire(arg)) {//又是tryAcquire方法,上面已经解析过这个方法了
                     setHead(node);
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
                 }
                 if (shouldParkAfterFailedAcquire(p, node) &&
-                    parkAndCheckInterrupt())
+                    parkAndCheckInterrupt())//注意1
                     interrupted = true;
             }
         } finally {
             if (failed)
-                cancelAcquire(node);
+                cancelAcquire(node);//注意这里2
         }
     }
 ```
 
-> 所以申请锁的过程就是---> 当state为0的时候，尝试获取独占锁，如果失败，加入等待队列，然后继续尝试自旋转获取。(这里面等待节点的休眠和唤醒没有写，这个还没理解到。。)。
+1.如果一次尝试出队失败，那么进入检查是否应该被挂起，检查当前的状态，比如可能会出现等不急出队了，就是获取状态被取消了。
+
+如果当前节点的前驱节点(predcessor)不是头节点，且满足挂起条件。当前出队线程被挂起，那么问题来了，当前线程被挂起后是谁来通知它到时间去唤醒尝试出队呢？
+
+2.来看finally方法，cancelAcquire(Node node)方法里面有个重要的方法，来唤醒继承节点（就是后驱节点）。并且如果当前节点已经是头节点了，如果它获取锁失败(非公平锁的情况下可能出现)那么它是不可以被休眠的，因为它一旦休眠，就再也没人能唤醒整个队列了，gg解决上面的那个疑问了。
+
+```
+   /**
+     * Wakes up node's successor, if one exists.
+     *
+     * @param node the node
+     */
+    private void unparkSuccessor(Node node) {
+        /*
+         * If status is negative (i.e., possibly needing signal) try
+         * to clear in anticipation of signalling.  It is OK if this
+         * fails or if status is changed by waiting thread.
+         */
+        int ws = node.waitStatus;
+        if (ws < 0)
+            compareAndSetWaitStatus(node, ws, 0);
+
+        /*
+         * Thread to unpark is held in successor, which is normally
+         * just the next node.  But if cancelled or apparently null,
+         * traverse backwards from tail to find the actual
+         * non-cancelled successor.
+         */
+        Node s = node.next;
+        if (s == null || s.waitStatus > 0) {
+            s = null;
+            for (Node t = tail; t != null && t != node; t = t.prev)
+                if (t.waitStatus <= 0)
+                    s = t;
+        }
+        if (s != null)
+            LockSupport.unpark(s.thread);
+    }
+```
+
+
+
+> 所以申请锁的过程就是---> 当state为0的时候，尝试获取独占锁，如果失败，加入等待队列，然后继续尝试自旋转获取。
 >
 > 这里tryAcquire是由AQS的子类去实现的。
 
@@ -321,3 +408,65 @@ acquireQueued(addWaiter(Node.EXCLUSIVE), arg)
 ```
 
 > 释放锁的过程平淡无奇。。。
+
+
+
+```
+ protected final boolean tryAcquire(int acquires) {
+            final Thread current = Thread.currentThread();
+            int c = getState();
+            if (c == 0) {
+                if (!hasQueuedPredecessors() &&
+                    compareAndSetState(0, acquires)) {
+                    setExclusiveOwnerThread(current);
+                    return true;
+                }
+            }
+            else if (current == getExclusiveOwnerThread()) {
+                int nextc = c + acquires;
+                if (nextc < 0)
+                    throw new Error("Maximum lock count exceeded");
+                setState(nextc);
+                return true;
+            }
+            return false;
+        }
+    }
+```
+
+
+
+- 非公平锁的tryAcquire()的实现：
+
+```
+final boolean nonfairTryAcquire(int acquires) {
+            final Thread current = Thread.currentThread();
+            int c = getState();
+            if (c == 0) {
+                if (compareAndSetState(0, acquires)) {//注意这里1
+                    setExclusiveOwnerThread(current);
+                    return true;
+                }
+            }
+            else if (current == getExclusiveOwnerThread()) {
+                int nextc = c + acquires;
+                if (nextc < 0) // overflow
+                    throw new Error("Maximum lock count exceeded");
+                setState(nextc);
+                return true;
+            }
+            return false;
+        }
+```
+
+1.对比公平锁的tryAcquire，可以清楚地看到，非公平锁在尝试获取锁的时候，不会去判断***hasQueuedPredecessors()***，直接就取尝试独占state，失败了才去入队乖乖按照fifo来获取锁。
+
+所以一个非公平锁，不管等待队列由多少，一旦申请锁，那个申请锁的线程和队列等待的头节点有一样的机会可以获取到锁。
+
+
+
+> 所以AbstractQueueSynchronizer的精髓就是维护一个state(int)，独占线程exclusiveOwnerThread(AbstractOwnableSynchronizer的成员变量)，Head节点(Node)一个等待队列(Node)。
+>
+> 公平锁：获取锁-->检查是否有等待队列，无----尝试获取独占锁(state,exclusiveOwnerThread)--->失败，入队等待获取锁---->满足挂起条件，挂起，出队获取到锁的那个节点，唤醒后驱节点取获取锁。
+>
+> 非公平锁：差别就是获取锁的那里不去检查是否由等待队列。(tryAcquire()的实现的不同)
