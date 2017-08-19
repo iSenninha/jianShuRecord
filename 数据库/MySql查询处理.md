@@ -148,11 +148,13 @@
     limit n,m 表示从n(包括n)开始获取n个数据，一般web应用经常使用limit进行分页操作，但是如果在数据量很大的情况下，比如从50w开始查询10个数据，可能会导致性能问题，比如这样：
 
     ```
-    select *from orders limit 100000,10;
-    select *from orders limit 1,10;
+    (1)select *from orders limit 100000,10;
+    (2)select *from orders limit 1,10;
     //前者会慢出翔，然后：
-    select *from orders where _id < (select _id from orders order by id limit 100000,10) limit 10
-    //这个查询是非常快，order by后会生成类似索引的东西，所以在这个时候使用limit的话会提速。
+    (3)select *from orders where _id < (select _id from orders order by id limit 100000,1) limit 10
+    //这个查询是非常快的
+    //优化的原因(个人猜测的)，语句1不会使用索引
+    //语句（2）会使用索引，具体待探索
     ```
 
     ​
