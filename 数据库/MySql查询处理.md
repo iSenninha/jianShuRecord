@@ -154,7 +154,7 @@
     (3)select *from orders where _id < (select _id from orders order by id limit 100000,1) limit 10
     //这个查询是非常快的
     //优化的原因(个人猜测的)，语句1不会使用索引
-    //语句（2）会使用索引，具体待探索
+    //语句（2）会使用覆盖索引，不用读取大量的数据进入内存？
     ```
 
     ​
