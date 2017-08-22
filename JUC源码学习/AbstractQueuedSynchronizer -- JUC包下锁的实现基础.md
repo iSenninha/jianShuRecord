@@ -489,8 +489,9 @@ condtion.singnal();//注意这里2
 
 1. 首先，一个已经获取锁的线程是独占了AQS的status和AOS的exclusiveThread，调用await方法的时候，会检查是否是独占线程--->加入同一个Condition对象(持有first，last节点Node)的等待队列，然后释放调用ASQ的release方法释放掉独占锁，然后LockSupport休眠;（见await代码）
 2. 由1可知，同一个Condition对象上一个Node节点代表的就是一个等待线程，调用signal同样要先获取到lock监视器，然后找到下一个需要唤醒的节点，让这个节点入队，没错，就是入队，入到AQS的等待队列，然后直接唤醒(见下面***注意3***)，这也就解释了为什么一个await()后唤醒的线程需要重新获取到监视器。
-3. 另外，重入锁还支持等待中中断之类的，这些坑之后再来填;
-4. 另外，使用ReentrantLock类工具一定要记得在finally里释放锁，释放锁，不然就要死锁了。。
+3. 另外，重入锁还支持**TimeWait**，是通过**LockSupport.parkNanos()**实现等待超时的，并且如果在等待超时未到时，前驱节点变成了头节点，那么就会被提前**唤醒**去竞争锁;
+4. 可中断是指在**api层面自旋竞争时**和**LockSupport**等待里可中断;
+5. 另外，使用ReentrantLock类工具一定要记得在finally里释放锁，释放锁，不然就要死锁了。。
 
 ```
 //await代码
