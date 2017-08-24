@@ -128,7 +128,82 @@ compact即压缩的意思，其实compact并不是Buffer定义的方法，他是
     }
 ```
 
+
+
+##### 7.array()
+
+```
+ //array()方法直接把数组返回过来，这是一个不安全的操作，因为调用者可能会直接去修改储存的数据结构
+ public final byte[] array() {
+        if (hb == null)
+            throw new UnsupportedOperationException();
+        if (isReadOnly)
+            throw new ReadOnlyBufferException();
+        return hb;
+    }
+    
+//可以在读取的时候使用这个方法
+FileChannel channel = null;
+		try {
+			RandomAccessFile file = new RandomAccessFile("/home/senninha/jianShuRecord/README.md", "rw");
+			channel = file.getChannel();
+			ByteBuffer buf = ByteBuffer.allocate(1024);
+			int i = channel.read(buf);
+			while (i != -1) {
+				System.out.println(new String(buf.array(), 0, i));//在这里。。。。。。-----
+				buf.clear();
+				i = channel.read(buf);
+			}
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			if (channel != null) {
+				try {
+					channel.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
+```
+
+
+
+##### 8.equals方法
+
+```
+    public boolean equals(Object ob) {
+        if (this == ob)//同一个对象返回true
+            return true;
+        if (!(ob instanceof ByteBuffer))
+            return false;
+        ByteBuffer that = (ByteBuffer)ob;
+        if (this.remaining() != that.remaining())//有相同的remaining
+            return false;
+        int p = this.position();
+        for (int i = this.limit() - 1, j = that.limit() - 1; i >= p; i--, j--)//remaining都相同
+            if (!equals(this.get(i), that.get(j)))
+                return false;
+        return true;
+    }
+```
+
+> 所以返回true的条件：
+>
+> 1.完全相同的对象;
+>
+> 2.剩余的remaining完全相同。
+
+
+
 ####所以Buffer类的用法：
+
 1.申请到了Bufffer后，直接可以执行写;
 2.读操作的时候，flip;
 3.如果想要重新读，rewind;
