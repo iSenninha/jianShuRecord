@@ -16,9 +16,58 @@
 
 - Selector
 
-  > ​	A selector may be created by invoking the [`open`](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/Selector.html#open()) method of this class, which will use the system's default [``selector provider``](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/spi/SelectorProvider.html) to create a new selector. A selector may also be created by invoking the [`openSelector`](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/spi/SelectorProvider.html#openSelector()) method of a custom selector provider. A selector remains open until it is closed via its [`close`](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/Selector.html#close()) method.
+  > ​	A selector may be created by invoking the [`open`](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/Selector.html#open()) method of this class, which will use the system's default [``selector provider``](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/spi/SelectorProvider.html) to create a new selector. A selector may also be created by invoking the [`openSelector`](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/spi/SelectorProvider.html#openSelector()) method of a custom selector provider. A selector remains open until it is closed via its [`close`](https://docs.oracle.com/javase/7/docs/api/java/nio/channels/Selector.html#close()) method
   >
-  > 调用本类的open()方法将会默认打开系统提供的多路选择器，selector的作用是管理多个channel连接。下面的是结合SocketChannel的代码解析
+  > 调用本类的open()方法将会默认打开系统提供的多路选择器.
+
+  ​	之所以可以做到非阻塞，就是因为采用了seletor，也就是io复用模型：
+
+  > IO多路复用是指内核一旦发现进程指定的一个或者多个IO条件准备读取，它就通知该进程。
+  >
+  > 主要的io复用方式有如下：**select**,**poll**,**epoll**
+  >
+  > 效率比较高，并且没有文件描述符限制的是epoll：
+  >
+  > epoll是在2.6内核中提出的，是之前的select和poll的增强版本。相对于select和poll来说，epoll更加灵活，没有描述符限制。epoll使用一个文件描述符管理多个描述符，将用户关系的文件描述符的事件存放到内核的一个事件表中，这样在用户空间和内核空间的copy只需一次。[引用](http://www.cnblogs.com/Anker/p/3263780.html)
+
+  ​	java select底层是根据不同的系统采用不同的模式的如下：
+
+  ```
+  If linux kernel >= 2.6 is detected, then the java.nio.channels.spi.SelectorProvider will use epoll.
+
+  public static SelectorProvider create() {
+      String osname = AccessController.doPrivileged(
+          new GetPropertyAction("os.name"));
+      if ("SunOS".equals(osname)) {
+          return new sun.nio.ch.DevPollSelectorProvider();
+      }
+
+      // use EPollSelectorProvider for Linux kernels >= 2.6
+      if ("Linux".equals(osname)) {
+          String osversion = AccessController.doPrivileged(
+              new GetPropertyAction("os.version"));
+          String[] vers = osversion.split("\\.", 0);
+          if (vers.length >= 2) {
+              try {
+                  int major = Integer.parseInt(vers[0]);
+                  int minor = Integer.parseInt(vers[1]);
+                  if (major > 2 || (major == 2 && minor >= 6)) {
+                      return new sun.nio.ch.EPollSelectorProvider();
+                  }
+              } catch (NumberFormatException x) {
+                  // format not recognized
+              }
+          }
+      }
+
+      return new sun.nio.ch.PollSelectorProvider();
+  }
+
+  ```
+
+  ​
+
+  下面的是结合SocketChannel的代码解析
 
   ```
               int port = 8888;
