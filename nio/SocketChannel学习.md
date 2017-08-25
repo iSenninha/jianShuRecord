@@ -4,6 +4,8 @@
 >
 > If you need to manage thousands of open connections simultanously, which each only send a little data, for instance a chat server, implementing the server in NIO is probably an advantage. Similarly, if you need to keep a lot of open connections to other computers, e.g. in a P2P network, using a single thread to manage all of your outbound connections might be an advantage. This one thread, multiple connections design is illustrated in this diagram.
 >
+> 所以，I/O 多路复用的特点是通过一种机制一个进程能同时等待多个文件描述符，而这些文件描述符（套接字描述符）其中的任意一个进入读就绪状态，select()函数就可以返回。
+>
 > Nio用于多个长连接，并且每个连接的数据量都不大的情况下，通过非阻塞的方式，一个线程可以管理多个连接。核心类包括**SocketChannel**，**Selector**，**Buffer**(主要是**ByteBuffer**)
 
 - SocketChannel
@@ -63,9 +65,18 @@
       return new sun.nio.ch.PollSelectorProvider();
   }
 
+
   ```
 
-  ​
+  > 采用epoll的话，有两种模式[引用](https://segmentfault.com/a/1190000003063859#articleHeader15)
+  >
+  > epoll对文件描述符的操作有两种模式：**LT（level trigger）**和**ET（edge trigger）**。LT模式是默认模式，LT模式与ET模式的区别如下：
+  > 　　**LT模式**：当epoll_wait检测到描述符事件发生并将此事件通知应用程序，`应用程序可以不立即处理该事件`。下次调用epoll_wait时，会再次响应应用程序并通知此事件。
+  > 　　**ET模式**：当epoll_wait检测到描述符事件发生并将此事件通知应用程序，`应用程序必须立即处理该事件`。如果不处理，下次调用epoll_wait时，不会再次响应应用程序并通知此事件。
+  >
+  > jdk采用的是水平触发
+  >
+  > netty采用的是边缘触发，边缘触发模式在很大程度上减少了epoll事件被重复触发的次数，因此效率要比LT模式高。epoll工作在ET模式的时候，必须使用非阻塞套接口，以避免由于一个文件句柄的阻塞读/阻塞写操作把处理多个文件描述符的任务饿死。
 
   下面的是结合SocketChannel的代码解析
 
@@ -119,7 +130,7 @@
 					} else {
 						if (key.isReadable()) {//状态为可读取的时候，进入读取
 							SocketChannel channel = (SocketChannel) key.channel();
-							ByteBuffer buf = (ByteBuffer) key.attachment();
+							ByteBuffer buf = (ByteBuffer) key.attachment();//附带attachment，复用buf，并且可以用到拆包的地方
 							if (buf == null) {
 								buf = ByteBuffer.allocate(capacity);
 								key.attach(buf);
