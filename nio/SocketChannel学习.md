@@ -28,9 +28,15 @@
   >
   > 主要的io复用方式有如下：**select**,**poll**,**epoll**
   >
-  > 效率比较高，并且没有文件描述符限制的是epoll：
+  > **select和poll**都需要在返回后，通过遍历文件描述符来获取已经就绪的socket。事实上，同时连接的大量客户端在一时刻可能只有很少的处于就绪状态，因此随着监视的描述符数量的增长，其效率也会线性下降。
+  >
+  > 效率比较高，并且没有文件描述符限制的，并且通过监听回调的方式通知的是**epoll**：
   >
   > epoll是在2.6内核中提出的，是之前的select和poll的增强版本。相对于select和poll来说，epoll更加灵活，没有描述符限制。epoll使用一个文件描述符管理多个描述符，将用户关系的文件描述符的事件存放到内核的一个事件表中，这样在用户空间和内核空间的copy只需一次。[引用](http://www.cnblogs.com/Anker/p/3263780.html)
+  >
+  > **文件描述符**：
+  >
+  > 文件描述符在形式上是一个非负整数。实际上，它是一个索引值，指向内核为每一个进程所维护的该进程打开文件的记录表。当程序打开一个现有文件或者创建一个新文件时，内核向进程返回一个文件描述符。在程序设计中，一些涉及底层的程序编写往往会围绕着文件描述符展开。但是文件描述符这一概念往往只适用于UNIX、Linux这样的操作系统。
 
   ​	java select底层是根据不同的系统采用不同的模式的如下：
 
@@ -64,6 +70,7 @@
 
       return new sun.nio.ch.PollSelectorProvider();
   }
+  ```
 
 
   ```
@@ -101,7 +108,7 @@
   ```
       public static final int OP_ACCEPT = 1 << 4;
       ....
-      
+
   ```
 
   ​		应该猜到了，采用高低位的方式，一个int型就可以储存四种事件，accept,read,write,connect。所以设置感兴趣的事件的时候，可以采用 **| 与**的方式。
@@ -118,7 +125,7 @@
 
 - 接受连接并操作并注册
 
-```
+  ```
 			while (true) {
 				while (iterator.hasNext()) {
 					SelectionKey key = iterator.next();
@@ -135,7 +142,7 @@
 								buf = ByteBuffer.allocate(capacity);
 								key.attach(buf);
 							}
-
+	
 							int len = -1;
 							while ((len = channel.read(buf)) != 0 && len != -1) {
 								System.out.print(
@@ -144,7 +151,7 @@
 								channel.write(buf);
 								buf.clear();
 							}
-
+	
 							if(len == -1) {//读取的为1的时候，关闭通道，关闭的同时，也从selector里移除了注册
 								System.out.println("disconnect:" + channel.getRemoteAddress());
 								channel.close();
@@ -157,7 +164,7 @@
 							System.out.println("is connectable");
 						}
 					}
-
+	
 					iterator.remove();
 				}
 				if (selector.select() > 0) {
@@ -184,95 +191,96 @@
 
 ```
 /**
- * 
+ * ​
  * @author senninha
- *
- */
-public class SocketChannelTest {
+    *
+     */
+    public class SocketChannelTest {
 
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		startServer();
-	}
+    public static void main(String[] args) {
+    	// TODO Auto-generated method stub
+    	startServer();
+    }
 
-	public static void startServer() {
-		int port = 8888;
-		int capacity = 1024;
-		ServerSocketChannel server = null;
-		Selector selector = null;
-		try {
-			server = ServerSocketChannel.open();
-			server.configureBlocking(false);
-			selector = Selector.open();
-			server.register(selector, SelectionKey.OP_ACCEPT);
-			server.bind(new InetSocketAddress(port));
-			selector.select();
-			Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
-
-			while (true) {
-				while (iterator.hasNext()) {
-					SelectionKey key = iterator.next();
-					if (key.isAcceptable()) {
-						SocketChannel channel = server.accept();
-						channel.configureBlocking(false);
-						System.out.println("连接：" + channel.getRemoteAddress().toString());
-						channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT);
-					} else {
-						if (key.isReadable()) {
-							SocketChannel channel = (SocketChannel) key.channel();
-							ByteBuffer buf = (ByteBuffer) key.attachment();
-							if (buf == null) {
-								buf = ByteBuffer.allocate(capacity);
-								key.attach(buf);
-							}
-
-							int len = -1;
-							while ((len = channel.read(buf)) != 0 && len != -1) {
-								System.out.print(
-										"收到[" + channel.getRemoteAddress() + "]:" + new String(buf.array(), 0, len));
-								buf.flip();
-								channel.write(buf);
-								buf.clear();
-							}
-
-							if(len == -1) {
-								System.out.println("disconnect:" + channel.getRemoteAddress());
-								channel.close();
-								continue;
-							}
-							System.out.print("\n----------------\n");
-						}
-						
-						if(key.isConnectable()) {
-							System.out.println("is connectable");
-						}
-					}
-
-					iterator.remove();
-				}
-				if (selector.select() > 0) {
-					iterator = selector.selectedKeys().iterator();
-				}
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} finally {
-
-			try {
-				if (server != null && server.isOpen())
-					server.close();
-
-				if (selector != null && selector.isOpen())
-					selector.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
+    public static void startServer() {
+    	int port = 8888;
+    	int capacity = 1024;
+    	ServerSocketChannel server = null;
+    	Selector selector = null;
+    	try {
+    		server = ServerSocketChannel.open();
+    		server.configureBlocking(false);
+    		selector = Selector.open();
+    		server.register(selector, SelectionKey.OP_ACCEPT);
+    		server.bind(new InetSocketAddress(port));
+    		selector.select();
+    		Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+    	
+    		while (true) {
+    			while (iterator.hasNext()) {
+    				SelectionKey key = iterator.next();
+    				if (key.isAcceptable()) {
+    					SocketChannel channel = server.accept();
+    					channel.configureBlocking(false);
+    					System.out.println("连接：" + channel.getRemoteAddress().toString());
+    					channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_CONNECT);
+    				} else {
+    					if (key.isReadable()) {
+    						SocketChannel channel = (SocketChannel) key.channel();
+    						ByteBuffer buf = (ByteBuffer) key.attachment();
+    						if (buf == null) {
+    							buf = ByteBuffer.allocate(capacity);
+    							key.attach(buf);
+    						}
+    	
+    						int len = -1;
+    						while ((len = channel.read(buf)) != 0 && len != -1) {
+    							System.out.print(
+    									"收到[" + channel.getRemoteAddress() + "]:" + new String(buf.array(), 0, len));
+    							buf.flip();
+    							channel.write(buf);
+    							buf.clear();
+    						}
+    	
+    						if(len == -1) {
+    							System.out.println("disconnect:" + channel.getRemoteAddress());
+    							channel.close();
+    							continue;
+    						}
+    						System.out.print("\n----------------\n");
+    					}
+    					
+    					if(key.isConnectable()) {
+    						System.out.println("is connectable");
+    					}
+    				}
+    	
+    				iterator.remove();
+    			}
+    			if (selector.select() > 0) {
+    				iterator = selector.selectedKeys().iterator();
+    			}
+    		}
+    	} catch (IOException e) {
+    		// TODO Auto-generated catch block
+    		e.printStackTrace();
+    	} finally {
+    	
+    		try {
+    			if (server != null && server.isOpen())
+    				server.close();
+    	
+    			if (selector != null && selector.isOpen())
+    				selector.close();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	}
+    }
 
 }
 
 ```
 
+```
