@@ -96,3 +96,87 @@
   > CountdownLatch.await()才会执行。
   >
   > 就是辣么简单。
+
+
+
+
+
+- 循环栅栏(CyclicBarrier)
+
+> 循环栅栏的用法是等到特定的线程进入了后再启动(注意是**线程**，不像上面拿两个，只要去调用非阻塞的API就可以消耗计数量)
+
+​	demo:
+
+```
+		CyclicBarrier barrier = new CyclicBarrier(2);
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+				try {
+					barrier.await();//第一个await()，这是个阻塞方法
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (BrokenBarrierException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+		}).start();
+		try {
+			barrier.await();//第二个await
+			System.out.println("jfdj");
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BrokenBarrierException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+```
+
+​	与其他的工具类不同，CyclicBarrier是直接聚合一个ReentrantLock来实现功能的，来看看调用await的时候发生了什么：
+
+```
+ReentrantLock.lock()--->检查是否到达了计数值，若到达，若不到，释放锁，并加入condition队列
+
+					--->若到达计数值，执行以下代码：
+					 final Runnable command = barrierCommand;
+                    if (command != null)
+                        command.run();//初始化时，可以往构造方法里填入这个，到达计数值的时候要执行的方法
+                    ranAction = true;
+                    nextGeneration();//这里来唤醒所有等待在condition队列的线程
+                    return 0;
+                    
+                     private void nextGeneration() {
+                        // signal completion of last generation
+                        trip.signalAll();//这里是conditon的signalAll方法
+                        // set up next generation
+                        count = parties;//重新设置计数量，所以这货可以重复计数。
+                        generation = new Generation();
+                    }
+```
+
+
+
+另外在由**中断**或者**调用reset**方法的时候，会产生brokenBarrier的动作，这个时候会唤醒所有的等待队列：
+
+```
+ public void reset() {
+        final ReentrantLock lock = this.lock;
+        lock.lock();
+        try {
+            breakBarrier();   // break the current generation
+            nextGeneration(); // start a new generation
+        } finally {
+            lock.unlock();
+        }
+    }
+```
+
+> 理解了ASQ的话，这个就很容易理解了。
