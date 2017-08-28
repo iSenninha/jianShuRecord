@@ -471,8 +471,6 @@ final boolean nonfairTryAcquire(int acquires) {
 >
 > 非公平锁：差别就是获取锁的那里不去检查是否由等待队列。(tryAcquire()的实现的不同)
 
-
-
 ### Condition 还有一个重要的功能就是Condition
 
 condition的功能就是用来替代Object的wait监视器功能的，典型用法如下：
@@ -540,3 +538,19 @@ final boolean transferForSignal(Node node) {
     }
 ```
 
+
+
+ASQ总结：
+
+> 定义好基础方法，然后留出一些没有被实现的接口方法，待子类具体实现去实现不同的功能：
+>
+> - tryAcquireShared
+> - tryAcquire
+> - tryReleaseShared
+> - tryRelease
+> - isHeldExclusively
+>
+>
+> 一般的锁的调用过程：
+>
+> accquire(ASQ写好)--->tryAccquire()(AQS的子类去实现)
