@@ -387,6 +387,30 @@ static class DefaultThreadFactory implements ThreadFactory {
 
 
 
+- submit() Future模式的实现
+
+> 以上是execute的实现，还有一个重要的实现是submit。
+>
+> 这个submit是带Future返回的任务提交方法，其实和以上基本是相同的，不过是在提交任务的时候，再做以一层封装，封装成了FutureTask，这层封装是在**AbstractExecutorService**进行的。
+
+```
+    public Future<?> submit(Runnable task) {
+        if (task == null) throw new NullPointerException();
+        RunnableFuture<Void> ftask = newTaskFor(task, null);
+        execute(ftask);//调用的其实是ThreadPoolExecutor的execute方法实现。
+        return ftask;
+    }
+    
+    封装过程：
+     protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T value) {
+        return new FutureTask<T>(runnable, value);
+    }
+```
+
+​	FutureTask实现了**Future**和**Runnable**接口，所以它可以被正常地被execute方法调用，所谓实现**Callable**接口开线程，不过还是依托于**Runnable**的**run**方法跑的，具体代码在**FutureTask.run()**里，完成任务的时候，往FutureTask里放入结果，然后调用的地方根据Futrue接口的相关方法可以阻塞地获取相关的结果。FutureTask的实现见下一个坑。。
+
+
+
 - 总结：
 
 > ThreadPoolExecutor，维护以下几个成员变量：
@@ -400,3 +424,11 @@ static class DefaultThreadFactory implements ThreadFactory {
 >
 > - 自己实现一个锁，为清理空闲线程作支持
 > - while循环不断取出方法，通过getTask()可以自行清除自己。。。
+>
+> 继承关系：
+>
+> | Executor      | ExecutorService | AbstractExecutorService | ThreadPoolExecutor |
+> | ------------- | --------------- | ----------------------- | ------------------ |
+> | （只有execute方法） |                 | 实现submit方法              | 实现具体的维护线程的逻辑       |
+> |               |                 |                         |                    |
+> |               |                 |                         |                    |
