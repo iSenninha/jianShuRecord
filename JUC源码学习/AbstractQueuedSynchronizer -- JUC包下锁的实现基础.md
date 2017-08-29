@@ -301,11 +301,11 @@ acquireQueued(addWaiter(Node.EXCLUSIVE), arg)
         for (;;) {
             Node t = tail;
             if (t == null) { // Must initialize
-                if (compareAndSetHead(new Node()))
+                if (compareAndSetHead(new Node()))//头节点是空的，并且必须存在
                     tail = head;
             } else {
                 node.prev = t;
-                if (compareAndSetTail(t, node)) {
+                if (compareAndSetTail(t, node)) {//设置尾节点
                     t.next = node;
                     return t;
                 }
@@ -329,6 +329,13 @@ acquireQueued(addWaiter(Node.EXCLUSIVE), arg)
                 final Node p = node.predecessor();
                 if (p == head && tryAcquire(arg)) {//又是tryAcquire方法,上面已经解析过这个方法了
                     setHead(node);
+                    /**
+                    *   private void setHead(Node node) {
+                    *   head = node;
+                    *   node.thread = null;
+                    *   node.prev = null;
+                    *出队，只是把原来那个空Node(不保存线程信息)出队，当前的线程竞争者node清空，作为头节点
+                    **/
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
@@ -346,12 +353,24 @@ acquireQueued(addWaiter(Node.EXCLUSIVE), arg)
 
 1.如果一次尝试出队失败，那么进入检查是否应该被挂起，检查当前的状态，比如可能会出现等不急出队了，就是获取状态被取消了。
 
-如果当前节点的前驱节点(predcessor)不是头节点，且满足挂起条件。当前出队线程被挂起，那么问题来了，当前线程被挂起后是谁来通知它到时间去唤醒尝试出队呢？
+如果当前节点的前驱节点(predcessor)不是头节点，且满足挂起条件。当前出队线程被挂起，那么问题来了，当前线程被挂起后是谁来通知它到时间去唤醒尝试出队呢？看下面的代码，这是独占锁下的**release**代码，唤醒下一个节点。
 
-2.来看finally方法，cancelAcquire(Node node)方法里面有个重要的方法，来唤醒继承节点（就是后驱节点）。并且如果当前节点已经是头节点了，如果它获取锁失败(非公平锁的情况下可能出现)那么它是不可以被休眠的，因为它一旦休眠，就再也没人能唤醒整个队列了，gg解决上面的那个疑问了。
+如果是在共享模式下，会唤醒所有的节点。
+
+
 
 ```
-   /**
+  public final boolean release(int arg) {
+        if (tryRelease(arg)) {
+            Node h = head;
+            if (h != null && h.waitStatus != 0)
+                unparkSuccessor(h);
+            return true;
+        }
+        return false;
+    }
+ 
+ /**
      * Wakes up node's successor, if one exists.
      *
      * @param node the node
@@ -465,12 +484,6 @@ final boolean nonfairTryAcquire(int acquires) {
 
 
 
-> 所以AbstractQueueSynchronizer的精髓就是维护一个state(int)，独占线程exclusiveOwnerThread(AbstractOwnableSynchronizer的成员变量)，Head节点(Node)一个等待队列(Node)。
->
-> 公平锁：获取锁-->检查是否有等待队列，无----尝试获取独占锁(state,exclusiveOwnerThread)--->失败，入队等待获取锁---->满足挂起条件，挂起，出队获取到锁的那个节点，唤醒后驱节点取获取锁。
->
-> 非公平锁：差别就是获取锁的那里不去检查是否由等待队列。(tryAcquire()的实现的不同)
-
 ### Condition 还有一个重要的功能就是Condition
 
 condition的功能就是用来替代Object的wait监视器功能的，典型用法如下：
@@ -540,17 +553,25 @@ final boolean transferForSignal(Node node) {
 
 
 
-ASQ总结：
+**总结**
 
-> 定义好基础方法，然后留出一些没有被实现的接口方法，待子类具体实现去实现不同的功能：
+> ASQ总结： 定义好基础方法，然后留出一些没有被实现的接口方法，待子类具体实现去实现不同的功能：
 >
-> - tryAcquireShared
-> - tryAcquire
-> - tryReleaseShared
-> - tryRelease
+> - tryAcquireShared (共享模式的实现，信号量，计数器的实现就是靠这个)
+> - tryAcquire (公平锁与否和具体功能的实现者)
+> - tryReleaseShared 
+> - tryRelease 
 > - isHeldExclusively
+> -  一般的锁的调用过程： accquire(ASQ写好)--->tryAccquire()(AQS的子类去实现)
 >
+> 
 >
-> 一般的锁的调用过程：
+> 所以AbstractQueueSynchronizer的精髓就是维护一个**state**(int)，独占线程exclusiveOwnerThread(AbstractOwnableSynchronizer的成员变量)，一个**等待队列**(Node)，等待队列里面的**Head**节点是一个**空节点**来的。**独占模式**下，每次release会唤醒头节点下**一个**节点，如果是**共享模式**，会唤醒**所有**等待中的节点。
 >
-> accquire(ASQ写好)--->tryAccquire()(AQS的子类去实现)
+> 公平锁：获取锁-->检查是否有等待队列，无----尝试获取独占锁(state,exclusiveOwnerThread)--->失败，入队等待获取锁---->满足挂起条件，挂起，出队获取到锁的那个节点，唤醒后驱节点取获取锁。
+>
+> 非公平锁：差别就是获取锁的那里不去检查是否由等待队列。(tryAcquire()的实现的不同)
+>
+> 
+
+### 

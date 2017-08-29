@@ -19,13 +19,75 @@
 
   > 这里粒子可以很好的说明信号量的功能，允许**2**个信号进入，先申请**2**个信号，然后申请了**2**个信号的线程再次去申请**1**个信号，很好，成功**死锁**了。。个人觉得这个东西是用在类似秒杀或者什么活动的？
   >
-  > 底层依然是**AQS**去实现的。应该能猜到这个，用**AQS**的**state**变量来记录还剩余的可进入信号量。内置公平和非公平，主要是新申请信号量的线程是否马上加入竞争还是乖乖**入队**竞争。
+  > 底层依然是**AQS**去实现的。应该能猜到这个，用**AQS**的**state**变量来记录还剩余的可进入信号量。一旦**state**等于**0**的情况出现，入队参与竞争尝试获取**锁**，头节点也会挂起，在占有信号量的线程**释放**信号的时候，会调用**代码1**唤醒等待的线程继续竞争信号**代码2**。
+  >
+  > ​
+  >
+  > 内置公平和非公平，主要是新申请信号量的线程是否马上加入竞争还是乖乖**入队**竞争。
+  >
+  > 还有一个有意思的地方是，这里用的是AQS的**共享Shared**模式，而不是**独占Exclusive**模式，所以调用的方法都是带**share**的方法。
+
+  代码1：
+
+  ```
+   private void doReleaseShared() {
+          for (;;) {
+              Node h = head;
+              if (h != null && h != tail) {
+                  int ws = h.waitStatus;
+                  if (ws == Node.SIGNAL) {
+                      if (!compareAndSetWaitStatus(h, Node.SIGNAL, 0))
+                          continue;            // loop to recheck cases
+                      unparkSuccessor(h);//唤醒队列挂起线程
+                  }
+                  else if (ws == 0 &&
+                           !compareAndSetWaitStatus(h, 0, Node.PROPAGATE))
+                      continue;                // loop on failed CAS
+              }
+              if (h == head)                   // loop if head changed
+                  break;
+          }
+      }
+  ```
 
 
+  代码2：
+
+  ```
+   private void doAcquireShared(int arg) {
+          final Node node = addWaiter(Node.SHARED);
+          boolean failed = true;
+          try {
+              boolean interrupted = false;
+              for (;;) {
+                  final Node p = node.predecessor();
+                  if (p == head) {
+                      int r = tryAcquireShared(arg);
+                      if (r >= 0) {
+                          setHeadAndPropagate(node, r);
+                          p.next = null; // help GC
+                          if (interrupted)
+                              selfInterrupt();
+                          failed = false;
+                          return;
+                      }
+                  }
+                  if (shouldParkAfterFailedAcquire(p, node) &&
+                      parkAndCheckInterrupt())
+                      interrupted = true;
+              }
+          } finally {
+              if (failed)
+                  cancelAcquire(node);
+          }
+      }
+  ```
+
+  ​
 
 - 计数器(CountdownLatch)
 
-  > 循环栅栏的目的是等够了信号量就开始运行
+  > 计数器的目的是等够了计数后就启动阻塞在**await**上的线程
 
   demo:
 
@@ -42,7 +104,7 @@
 
   > 所以CountdownLatch的核心是在达到计数的时候如何**唤醒全部的等待队列**(唤醒动作是在**countDown()**里做的)
   >
-  > 这个方法是AQS实现的：doReleaseShared()
+  > 这个方法是AQS实现的：doReleaseShared()，这个方法会在最后一次的**countDown**里调用，也会在阻塞唤醒后的线程里**doAcquireShared().setHeadAndPropagate()**方法里调用，加快唤醒，**propagation**可繁殖的。。。
 
   ```
    private void doReleaseShared() {
@@ -96,7 +158,8 @@
   > CountdownLatch.await()才会执行。
   >
   > 就是辣么简单。
-
+  >
+  > 原理是使用AQS的**共享模式** ，和信号量一样。
 
 
 
