@@ -372,7 +372,7 @@ static class DefaultThreadFactory implements ThreadFactory {
    >
    > 看一下这个锁相关方法还有谁在调用？
    >
-   > **tryLock**，发现这个方法在**interruptIdleWorkers**被调用了，最上层暴露出来的是**shutdown**方法，再回去看，如果核心线程被阻塞在**getTask**的时候，是不会获取锁的，那么tryLock()是返回true，所以用这个来判断某个工作线程是否处于**空闲**状态。
+   > **tryLock**，发现这个方法在**interruptIdleWorkers**被调用了，最上层暴露出来的是**shutdown**,**setCorePoolSize(动态调整核心线程)**方法，再回去看，如果核心线程被阻塞在**getTask**的时候，是不会获取锁的，那么tryLock()是返回true，所以用这个来判断某个工作线程是否处于**空闲**状态。然后清除某些空闲的线程。
 
 - 拒绝策略
 
