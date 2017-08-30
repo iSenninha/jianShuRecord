@@ -21,3 +21,16 @@ Executors详解
 
 
 
+----
+
+
+
+2. Schedule系列
+
+| 周期性执行任务                          | 解析                                       |
+| -------------------------------- | ---------------------------------------- |
+| newSingleThreadScheduledExecutor | 单线程周期性任务，依然用了一个代理类，在finalize的时候加入了shutdown方法 |
+| newScheduledThreadPool           | 指定线程数目和线程工程                              |
+|                                  |                                          |
+|                                  |                                          |
+
