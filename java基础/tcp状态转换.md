@@ -29,6 +29,7 @@
 以上是正常关闭的状态
 还有其他的状态：
 > 1.双方在未收到FIN的前提下都发送了FIN，则同时进入由FIN-WAIT1进入CLOSING状态，然后收到应答就进入了TIME-WAIT
+
 2.等待两个msl时间是为了保证对方收到了ACK确认,如果不等待这个时间就进入了终止状态，而实际上对方**没有收到ack**，然后对方**再次发送fin**，主动关闭的一方会发送RST，然后对方如果是在java里就会抛出**connection reset的SocketException**
 
 Socket概念：
