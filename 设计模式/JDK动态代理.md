@@ -72,3 +72,64 @@ class ServiceImpl implements Service {
 > 动态代理可以包装所有的使用这个方法的类，然后在对应方法执行的时候加入我们需要的逻辑，前置通知，后置通知都可以。
 >
 > 使用场景如性能监测，访问控制，事务管理、缓存、对象池管理以及日志记录。
+
+
+
+
+
+- 附录代码
+
+```
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+
+public class ProxyTest {
+
+	public static void main(String[] args) {
+		Service service = new ServiceImpl();
+		InvocationHandler handler = new MyInvocationHandler(service);
+		Service ser = (Service) Proxy.newProxyInstance(handler.getClass().getClassLoader(),
+				service.getClass().getInterfaces(), handler);
+		ser.say();
+		ser.hello();
+	}
+
+}
+
+interface Service {
+	public void say();
+
+	public void hello();
+}
+
+class ServiceImpl implements Service {
+
+	@Override
+	public void say() {
+		System.out.println("say:" + this.getClass().getSimpleName());
+	}
+
+	@Override
+	public void hello() {
+		System.out.println("hello");
+	}
+
+}
+
+class MyInvocationHandler implements InvocationHandler {
+	private Service servic;
+
+	public MyInvocationHandler(Service servic) {
+		super();
+		this.servic = servic;
+	}
+
+	@Override
+	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+		System.out.println("invoke");
+		return method.invoke(this.servic, args);
+	}
+}
+```
+
