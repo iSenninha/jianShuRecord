@@ -146,6 +146,123 @@ public ScheduledFuture<?> schedule(Runnable command,
 
      4. scheduleWithFixedDelay固定的延迟执行
 
+
+     > **2**是如何实现的？，首先来看对应的task的**run()**方法，因为所有的线程池最后都是转化到run方法里去跑的。
+     >
+     > ```
+     >  public void run() {
+     >         if (state != NEW ||
+     >             !UNSAFE.compareAndSwapObject(this, runnerOffset,
+     >                                          null, Thread.currentThread()))
+     >             return;
+     >         try {
+     >             Callable<V> c = callable;
+     >             if (c != null && state == NEW) {
+     >                 V result;
+     >                 boolean ran;
+     >                 try {
+     >                     result = c.call();//执行传入的任务
+     >                     ran = true;
+     >                 } catch (Throwable ex) {
+     >                     result = null;
+     >                     ran = false;
+     >                     setException(ex);//设置结果，继续跳入下一段代码
+     >                 }
+     >                 if (ran)
+     >                     set(result);
+     >             }
+     >         } finally {
+     >             // runner must be non-null until state is settled to
+     >             // prevent concurrent calls to run()
+     >             runner = null;
+     >             // state must be re-read after nulling runner to prevent
+     >             // leaked interrupts
+     >             int s = state;
+     >             if (s >= INTERRUPTING)
+     >                 handlePossibleCancellationInterrupt(s);
+     >         }
+     >     }
+     > ```
+     >
+     > ```
+     >   	private void finishCompletion() {
+     >         // assert state > COMPLETING;
+     >         for (WaitNode q; (q = waiters) != null;) {
+     >             if (UNSAFE.compareAndSwapObject(this, waitersOffset, q, null)) {
+     >                 for (;;) {
+     >                     Thread t = q.thread;
+     >                     if (t != null) {
+     >                         q.thread = null;
+     >                         LockSupport.unpark(t);//开始唤起挂起的线程，并且是唤醒所有等待在get()的线程队列
+     >                     }
+     >                     WaitNode next = q.next;
+     >                     if (next == null)
+     >                         break;
+     >                     q.next = null; // unlink to help gc
+     >                     q = next;
+     >                 }
+     >                 break;
+     >             }
+     >         }
+     >
+     >         done();
+     >
+     >         callable = null;        // to reduce footprint
+     >     }
+     > ```
+     >
+     > 再来看看对应的FutureTask.get()方法：
+     >
+     > ```
+     >     public V get() throws InterruptedException, ExecutionException {
+     >         int s = state;
+     >         if (s <= COMPLETING)
+     >             s = awaitDone(false, 0L);
+     >         return report(s);
+     >     }
+     >     
+     >      private int awaitDone(boolean timed, long nanos)
+     >         throws InterruptedException {
+     >         final long deadline = timed ? System.nanoTime() + nanos : 0L;
+     >         WaitNode q = null;
+     >         boolean queued = false;
+     >         for (;;) {
+     >             if (Thread.interrupted()) {
+     >                 removeWaiter(q);
+     >                 throw new InterruptedException();
+     >             }
+     >
+     >             int s = state;
+     >             if (s > COMPLETING) {
+     >                 if (q != null)
+     >                     q.thread = null;
+     >                 return s;
+     >             }
+     >             else if (s == COMPLETING) // cannot time out yet
+     >                 Thread.yield();
+     >             else if (q == null)
+     >                 q = new WaitNode();
+     >             else if (!queued)
+     >                 queued = UNSAFE.compareAndSwapObject(this, waitersOffset,
+     >                                                      q.next = waiters, q);
+     >             else if (timed) {
+     >                 nanos = deadline - System.nanoTime();
+     >                 if (nanos <= 0L) {
+     >                     removeWaiter(q);
+     >                     return state;
+     >                 }
+     >                 LockSupport.parkNanos(this, nanos);//等待超时时间
+     >             }
+     >             else
+     >                 LockSupport.park(this);//直接挂起等待，直到任务完成时候唤醒
+     >         }
+     >     }
+     > ```
+     >
+     > **所以**
+     >
+     > 带**Future**返回的只不过是在获取的时候维护一个**是否完成的状态**，然后**挂起**，任务完成的时候再去**唤醒**
+
      > 3&4的区别在哪里？
      >
      > 文档里关于scheduleAtFixedRate的解释：
