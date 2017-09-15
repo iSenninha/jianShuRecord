@@ -2,25 +2,26 @@
 
 ####1.安装mysql 
 > apt-get install mysql-server mysql-client
-搞定～x
+> 搞定～x
 
 
 ####2.安装jdk环境
 [jdk下载地址](http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz)
 > //scp -r jdk-8u131-linux-x64.tar.gz root@139.199.0.21:/usr/java
-上传文件到远程服务器
+> 上传文件到远程服务器
 
-> 
+```
 tar -zxvf jdk...
 vi /etc/profile
 追加：
 export JAVA_HOME=/home/senninha/soft/jdk/jdk1.8.0_144
 export PATH=$JAVA_HOME/bin:$PATH
-export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
-//\$前面的那个是转义
-<br>
+export CLASSPATH=$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+//linux下的分隔符是:冒号，而不是分号;
+
 使其生效
 source /etc/profile
+```
 
 ####3.tomcat
 [tomcat下载地址](http://mirror.bit.edu.cn/apache/tomcat/tomcat-7/v7.0.77/bin/apache-tomcat-7.0.77.tar.gz) 
@@ -30,8 +31,8 @@ source /etc/profile
 [maven下载地址](http://mirrors.hust.edu.cn/apache/maven/maven-3/3.5.0/binaries/apache-maven-3.5.0-bin.tar.gz)
 
 > 更改远程仓库为阿里云
-   vi /maven/conf/settings.xml
- 
+>    vi /maven/conf/settings.xml
+
  ```
    <mirror>
       <id>alimaven</id>
@@ -40,14 +41,14 @@ source /etc/profile
       <mirrorOf>central</mirrorOf>        
     </mirror>
  ```
- 
+
  > 配置maven环境变量
- MAVEN_HOME=/usr/local/maven/apache-maven-3.3.9
-export MAVEN_HOME
-export PATH=\${PATH}:\${MAVEN_HOME}/bin
-//\是转义字符
- 
- 
+ >  MAVEN_HOME=/usr/local/maven/apache-maven-3.3.9
+ > export MAVEN_HOME
+ > export PATH=\${PATH}:\${MAVEN_HOME}/bin
+ > //\是转义字符
+
+
 ####5.配置debian 163源
 ```
 # 
