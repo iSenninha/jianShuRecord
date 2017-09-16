@@ -108,7 +108,7 @@ try{
 可能需要设置证书权限 chmod 600 /root/.ssh/对应密钥
 
 生成ssh密钥
-key-keygen
+ssh-keygen
 一路往下，然后默认在~/.ssh/id_rsa  ~/.ssh/id_rsa.pub(公钥)
 将公钥放在github上，就可以用ssh免密码来push了
 放在
