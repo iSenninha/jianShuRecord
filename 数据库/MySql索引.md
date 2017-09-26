@@ -98,3 +98,100 @@ select *from table_a force index(a);//强制数据库使用这个索引执行某
 
 
 > [mysql索引好文](https://juejin.im/entry/590427815c497d005832dab9)
+
+
+
+- 索引的几种情况
+
+> 使用的示例库是mysql里自带的employees库，使用**titles**表来作为demo，该表的索引情况如下：
+>
+> (em_no,title,from_date)联合主键(联合索引)。
+
+	#### 	1.全列匹配
+
+​		全列匹配即是所有索引的字段都作为判断条件了，如下：
+
+		> ```
+		> EXPLAIN SELECT * FROM employees.titles WHERE emp_no='10001' AND title='Senior Engineer' AND from_date='1986-06-26';
+		> ```
+
+​		如果并且，如果SQL中的判断顺序不和联合索引从顺序相同，但是包含了全部索引字段的话，Mysql会自己做优			  化，把所有的索引都会使用上。
+
+	#### 	2.最左前缀匹配
+
+​		查询语句里，只精确匹配从索引左边开始的连续几个索引，如下：
+
+> ```
+> EXPLAIN SELECT * FROM employees.titles WHERE emp_no='10001';
+> ```
+
+#### 	3.索引中的中间条件未匹配
+
+​		比如下面这个语句，判断里有联合索引的左边和最右的匹配条件，但是中间的title没有，那么这种情况只能使用到最左的精确匹配。
+
+> ```
+> EXPLAIN SELECT * FROM employees.titles WHERE emp_no='10001' AND from_date='1986-06-26';
+> ```
+
+​		这个时候，如果**title**字段不多的话，可以手动去填上title这个坑，如下：
+
+> ```
+> EXPLAIN SELECT * FROM employees.titles
+> WHERE emp_no='10001'
+> AND title IN ('Senior Engineer', 'Staff', 'Engineer', 'Senior Staff', 'Assistant Engineer', 'Technique Leader', 'Manager')
+> AND from_date='1986-06-26';
+> ```
+
+​		这样的话就会用上所有的索引了。
+
+	#### 	4.查询条件没有用到指定索引的第一列
+
+​		没有用到第一列索引的，自然就不可能用到索引了，只能全表扫描
+
+	#### 	5.匹配某列前缀字符
+
+​		如下查询语句，第二个条件字段使用了使用**通配符%**
+
+> ```
+> EXPLAIN SELECT * FROM employees.titles WHERE emp_no='10001' AND title LIKE 'Senior%';
+> ```
+
+​		那么这个语句仍然能用到第二个字段的部分前缀字符索引，但是，如果通配符出现了'%enior'的话，就无法使用索引了。。
+
+	#### 	6.范围查询
+
+​		一个语句中多个范围查找，后面的范围查找无法使用索引：
+
+> ```
+> EXPLAIN SELECT * FROM employees.titles
+> WHERE emp_no < '10010'
+> AND title='Senior Engineer'
+> AND from_date BETWEEN '1986-01-01' AND '1986-12-31';
+> ```
+
+​		显然，根据B+树联合索引的原理，范围查找只能使用到第一个索引，后面的范围查找索引无法使用。
+
+	#### 	7.条件中由函数表达式会导致无法使用索引
+
+​		比如下面这句，截取title里的左六位，并不会使用到title上的索引
+
+> ```
+> EXPLAIN SELECT * FROM employees.titles WHERE emp_no='10001' AND left(title, 6)='Senior';
+> ```
+
+#### 	8.前缀索引
+
+​		前缀索引是指，使用字段的一部分(left函数)来作为关键字加入索引，比如这个应用场景，姓氏和名字是两个独立的字段，经常要查询这两个。索引可以使用姓氏的全部和名字的一部份来建立索引，这样的话，索引的长度不会太长，减少**索引维护**和**空间**的消耗。
+
+​		如下，使用名字+姓氏的前四个字符作为索引
+
+> ```
+> ALTER TABLE employees.employees
+> ADD INDEX `first_name_last_name4` (first_name, last_name(4));
+> ```
+
+#### 9.尽量采用自增字段来作为索引
+
+> innoDB使用聚集索引，数据记录本身被存于主索引（一颗B+Tree）的叶子节点上。这就要求同一个叶子节点内（大小为一个内存页或磁盘页）的各条数据记录按主键顺序存放，因此每当有一条新的记录插入时，MySQL会根据其主键将其插入适当的节点和位置，如果页面达到装载因子（InnoDB默认为15/16），则开辟一个新的页（节点）。
+>
+> 如果使用非自增索引，那么每次插入一个都近乎是随机的索引值，那么mysql要查找到对应应该存在的位置，然后作移动才能插入，造成了很多额外的开销，并且索引结构不够紧凑，后续可能要用optimize tablename来维护。
