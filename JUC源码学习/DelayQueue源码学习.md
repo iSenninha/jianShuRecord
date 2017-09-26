@@ -4,7 +4,7 @@
 > DelayQueue实现了[BlockingQueue](http://www.jianshu.com/p/716bddf05bd0)接口，所以是支持阻塞操作的
 
 
-<br>
+
 
 - 首先想要入队的元素必须实现Delayed接口，先来看Delayed接口:
 ```
@@ -54,9 +54,33 @@ class DelayBean implements Delayed{
 	}
 	
 }
-
 ```
+​	ps:插入一下**System.nanoTime()**的解释：
+
+> ```java
+> /**
+>  * Returns the current value of the running Java Virtual Machine's
+>  * high-resolution time source, in nanoseconds.
+>  *
+>  * <p>This method can only be used to measure elapsed time and is
+>  * not related to any other notion of system or wall-clock time.
+>  * The value returned represents nanoseconds since some fixed but
+>  * arbitrary <i>origin</i> time (perhaps in the future, so values
+>  * may be negative).  The same origin is used by all invocations of
+>  * this method in an instance of a Java virtual machine; other
+>  * virtual machine instances are likely to use a different origin.
+>  **/
+> ```
+> 上面的这段话，这个方法只能用在度量时间流逝了多少，而不能用在具体事件的概念(notion)
+>
+> 源头(origin) 可能是固定的，也可能是随机的。
+>
+> 同一个虚拟机会用同一个源头(origin)来计算消失事件，但是不同的虚拟机使用不同的源头。
+
 ---
+
+
+
 - 接下来看一下DelayQueue的成员变量：
 ```
     //重入锁
