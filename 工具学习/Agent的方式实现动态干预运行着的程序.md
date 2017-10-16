@@ -4,12 +4,14 @@
 
 - 导入jar包
 
+  > 
+  > ```
   > <dependency>
   >     <groupId>io.earcam.wrapped</groupId>
   >     <artifactId>com.sun.tools.attach</artifactId>
   >     <version>1.8.0_jdk8u131-b11</version>
   > </dependency>)
-  >
+  > ```
   > 不是maven项目就去中央仓库下一个。。
 
 
@@ -76,7 +78,7 @@
   	    public static void main(String[] args) throws AttachNotSupportedException,
   	            IOException, AgentLoadException, AgentInitializationException {
   	        VirtualMachine vm = VirtualMachine.attach(args[0]);
-  	        vm.loadAgent("/Users/jiangbo/Workspace/code/java/javaagent/loadagent.jar");
+  	        vm.loadAgent("/agentjar包的路径/loadagent.jar");
   			//加载上一步导出的jar包
   	    }
 
