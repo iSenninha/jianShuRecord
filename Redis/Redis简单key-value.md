@@ -107,4 +107,13 @@ set senninha 1 ex 10
 
 
 
+##### 5.通过模式匹配获取所有的key
+
+```
+keys pattern
+//通过这个匹配pattern获取redis里的key
+```
+
+
+
 基本的key-value用法就到这里啦。
