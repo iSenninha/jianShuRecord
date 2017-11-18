@@ -144,3 +144,194 @@
   ```
 
   以上表示用一位表示a的变量，节省空间
+
+
+
+- 动态分配内存
+
+  为某个指针动态分配内存大小
+
+  ```c
+  void malloctest(){
+  	char *ch;
+  	ch = malloc(200 * sizeof(char));
+  	if(ch == NULL){
+  		printf("unbale to malloc memory");
+  	}else{
+  		printf("malloc success");
+  		*ch = 's';
+  		printf("memory:%s",ch);
+  	}
+  }
+  //分配内存还可用用calloc函数，与上述函数的区别是，这个函数可以为所分配的内存写0，而malloc不可以。
+  ```
+
+  ​
+
+  重新分配内存
+
+  ```c
+  void realloctest(){
+  	char *ch;
+  	ch = calloc(10, 10);
+  	printf("ch's address %d\n", &ch);
+
+  	ch = realloc(ch, 110);
+
+  	printf("after realloc ,address is %d", &ch);
+  }
+  ```
+
+  如果重新分配到大小为0,那么等价于使用**free()**函数，如果小于原来的内存，那么重分配后在原来的那部分数据不变，如果大于原来的内存，那么新增加的内存不会被初始化。
+
+  释放内存
+
+  ```c
+  free(*pointer);
+  //在内存不需要的时候释放掉内存
+  ```
+
+  ​
+
+- 命令行传递参数
+
+  ```c
+  void command(char argc, char *argv[]){
+  	printf("program's name is %s\n", argv[0]);
+  	if(argc == 1){
+  		printf("need a argument\n");
+  	}else{
+  		printf("argument is %s\n", argv[1]);
+  	}
+  }
+
+
+  int main(char argc, char *argv[])
+  {
+  	command (argc, argv);
+  }
+  ```
+
+  **argc**默认为1,如果有参数的话，就会往上加1，**argv**是一个数组指针，**argv[0]**存放的是程序名，接下去存放的就是具体的命令行传入参数了。
+
+
+
+- 指针
+
+  指针简单来说指的是获取某个数据才内存里的位置。
+
+  ```c
+  void pointertest(int *i){
+  	*i = 3;
+  	printf("pointertest已更改值大小");
+  }
+
+  void changetest(int i){
+  	i = 3;
+  	printf("形式参数在内存中的位置:%d\n", &i);
+  }
+
+
+  int main(char argc, char *argv[])
+  {
+  	int i = 4;
+  	printf("更改前参数的大小：%d\n", i);
+  	pointertest(&i);
+  	printf("更改完毕后参数的大小：%d\n", i);
+
+  	i = 4;
+  	printf("调用前：%d\n", i);
+  	changetest(i);
+  	printf("调用后：%d\n", i);
+  	printf("传入参数在内存中的位置:%d\n", &i);
+  	
+  }
+
+  输出：
+  ----------------------------------------------
+  更改前参数的大小：4
+  pointertest已更改值大小更改完毕后参数的大小：3
+  调用前：4
+  形式参数在内存中的位置:-875611700
+  调用后：4
+  传入参数在内存中的位置:-875611652
+  ```
+
+  上述**pointertest()**就获取了**i**的指针，然后在给函数传入参数的时候，可以传入指针，然后直接更改指针对应的内存位置的值。然后传入值的地方也同时被改变，因为直接改的是**内存值**。而**test()**是用形式传参的形式，进入**test()**后的i在内存中的位置实际上已经不是传入的时候在内存中的位置了。
+
+  数组指针
+
+  ```c
+  void pointerarray(){
+  	int array[] = {1, 3, 5};
+  	printf("array:%d,%d,%d\n", *array, *(array + 1), *(array + 2));
+  	printf("我其实是一个指针，地址是%d,%d", array, array + 1);
+    	//这里的+1,会自动往指针上增加该指针数据类型应该加的字节数，比如这里是int，所以是+4,见下面的输出
+  }
+
+  输出：
+  ----------------------------------------------
+  array:1,3,5
+  我其实是一个指针，地址是-443877180,-443877176
+  ----------------------------------------------
+
+  ```
+
+  初始化一个数组其实就是返回一个数组里第一个位置的**指针**，以指针为原始操作的话，可以把array[0]这种方式当成一种语法糖。上述的方式，可以打印出这个数组的所有值。
+
+  指针数组
+
+  ```c
+  void pointerarray(){
+  	int array[] = {1, 3, 5};
+  	int *parray[] ={array, array + 1, array + 2};
+
+  	printf("%d,%d,%d", *(*parray), *(parray[1]), *(*(parray + 2)));
+    	//看一下这个风骚的写法，就能明白这里面存的就是指针。。
+  }
+  输出：
+  ----------------------------------------------
+  1,3,5
+  ----------------------------------------------
+  ```
+
+  所谓指针数组，就是一个储存指针的数组。。
+
+  再来捋一下：
+
+  ```
+  int *pa[];//这个是指针数组，先是(pa[])，后才运算到指针，指针数组，储存指针的数组
+  int ap[];//这个是数组指针，表示的是数组的指针;
+  int (*pa1)[] = &pa; //这是个指针，类型是数组
+  //访问数据变成这样：*(*pa1)就能访问到pa[0]的数据啦。
+  ```
+
+
+
+- 函数指针
+
+  函数名也是一个指针，那么可以用一个指针来表示一个函数
+
+  ```c
+  void (*f)(int) = function_name;
+  //void表示返回值的类型，(*f)可以自定义，然后(int)表示参数，等号右边是函数名。
+
+  //调用
+  f(1);
+  //有个奇怪的点，必须函数写在指针函数前才能正常使用，如下：
+
+  #include <stdio.h>
+  #include <stdlib.h>
+
+  void pointer1(int i){
+  	puts("这里是指针函数1");
+  }
+
+  int main(void) {
+  	void (*e)(int) = pointer1;
+  	e(1);
+  }
+  ```
+
+  ​
+
