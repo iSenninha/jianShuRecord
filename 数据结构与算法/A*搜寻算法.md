@@ -16,33 +16,40 @@
 
 
 
-​						![参考图](./pic/A*图.jpg)
+
 
 - 整个算法的步骤如下：
 
-  - 定义这几个数据结构，openList（可走的节点集合），closeList（已经被选过的节点集合)，节点有指向他的父节点的指针。
+ 	 - 定义这几个数据结构，openList（可走的节点集合），closeList（已经被选过的节点集合)，节点有指向他的父节点的指针。
 
-  - 1.当前节点(就是一开始的出发点)，扫描周围的可走路径，所得的节点必须不在**closeList**中，然后计算出最小的f(n);
+  	- 1.当前节点(就是一开始的出发点)，扫描周围的可走路径，所得的节点必须不在**closeList**中，然后计算出最小的f(n);	
 
-  - 2.找出当前最小的那个节点后，看一下是否存在在**openList**中
+  	- 2.找出当前最小的那个节点后，看一下是否存在在**openList**中	
 
-    - 如果不存在，直接把它加入**closeList**，其他的节点加入**openList**，并且设置他们的父节点为当前节点
+	    	- 如果不存在，直接把它加入**closeList**，其他的节点加入**openList**，并且设置他们的父节点为当前节点	
 
-    - 如果存在，将现在计算出来的g值与之前保存在**openList**里的g值比较，
+    		- 如果存在，将现在计算出来的g值与之前保存在**openList**里的g值比较，
 
-      - 若小，则表明现在的是更优路径，把选中节点设置为当前节点，并加入**closeList**
+      		- 若小，则表明现在的是更优路径，把选中节点设置为当前节点，并加入**closeList**
 
-      - 若大于或者等于，处理逻辑和不存在的情况一样
+      		- 若大于或者等于，处理逻辑和不存在的情况一样
 
         以上这一步是为了找到离出发点更近的路，即动态搜寻更近的路径。
 
-    3.如果第二步找不到合适的节点，直接从openList里寻找f(n)值最小的，设置为cur，然后继续搜索。
+  	- 3.如果第二步找不到合适的节点，直接从openList里寻找f(n)值最小的，设置为cur，然后继续搜索。
 
-  - 直到closeList里包含了目的地，整个搜寻过程结束。
+ 	- 直到closeList里包含了目的地，整个搜寻过程结束。
+  
+  	- 4.从目的地节点指向parent节点的引用反向遍历，即可找到一条路径
 
 
 
-> 不用担心此路不通的情况，不通的话会绕回通的地方，这个时候**closelist**的值可能会比较大，但是最后反向遍历的时候还是按照父结点最优路线来搜索路线的。
+> 不用担心此路不通的情况，不通的话会通过**openList**绕回通的地方。加入**closeList**只是为了表示它已经被走过了，不再加入待考虑的列表中，并不代表加入**closeList**就是需要走的节点。
+
+- 下面是Java实现，算法核心代码在这里[A*Java实现](https://github.com/iSenninha/tank/tree/v1.1/src/main/java/cn/senninha/game/map/util)，还做了一个丑。。的[Swing UI](https://github.com/iSenninha/tank/blob/v1.1/src/test/java/cn/senninha/sserver/astar/AStarGUI.java)，git clone下来，切到**v1.1**分支，跑**AStarGUI.java**，即可。。。
+
+![GUI](./pic/astar.png)
 
 - 参考[A星](http://blog.csdn.net/hitwhylz/article/details/23089415)
 
+~~~~
