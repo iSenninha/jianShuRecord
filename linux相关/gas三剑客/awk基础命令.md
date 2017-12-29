@@ -101,3 +101,15 @@ awk基础命令.md
   awk '{printf "%-30s\t%-10s\t%d\n", $1,$3,NR}' /tmp/info 
 ```
   以上的输出就是格式化过后的，暂时就是这些了。。
+
+- 截取字符串函数str
+  有时候可能会出现切割后依然还要截取的情况，比如这样的文本：
+> gold:100
+
+  如果要计算gold的总数，需要截取100即可，那么可以用awk内置的substr函数：
+
+```
+//假设这一列是第一列
+awk 'BEGIN{print"充值钻石："; size=0} {size=size+substr($1,6)} END{print size}'
+```
+  如上，下标和awk一样是从1开始的。
