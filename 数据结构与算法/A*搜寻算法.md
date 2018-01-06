@@ -65,5 +65,8 @@ A*算法
 
     ​
 
+- 下面是Java实现，算法核心代码在这里[A*Java实现](https://github.com/iSenninha/tank/tree/v1.1/src/main/java/cn/senninha/game/map/util)，还做了一个丑。。的[Swing UI](https://github.com/iSenninha/tank/blob/v1.1/src/test/java/cn/senninha/sserver/astar/AStarGUI.java)，git clone下来，切到**v1.1**分支，跑**AStarGUI.java**，即可。。。
+
+![GUI](./pic/astar.png)
 - 参考[A星](http://blog.csdn.net/hitwhylz/article/details/23089415)
 
