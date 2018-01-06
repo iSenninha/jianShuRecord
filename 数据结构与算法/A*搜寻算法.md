@@ -1,48 +1,69 @@
 ### A*搜寻算法
 
-> **A\*搜索算法**，俗称**A星算法**。这是一种在图形平面上，有多个[节点](https://zh.wikipedia.org/wiki/%E7%AF%80%E9%BB%9E)的[路径](https://zh.wikipedia.org/wiki/%E8%B7%AF%E5%BE%84)，求出最低通过[成本](https://zh.wikipedia.org/wiki/%E6%88%90%E6%9C%AC)的[算法](https://zh.wikipedia.org/wiki/%E7%AE%97%E6%B3%95)。常用于游戏中的NPC的移动计算，或[在线游戏](https://zh.wikipedia.org/wiki/%E7%BD%91%E7%BB%9C%E6%B8%B8%E6%88%8F)的BOT的移动计算上。
->
-> 该算法综合了Best-First Search和[Dijkstra算法](https://zh.wikipedia.org/wiki/Dijkstra%E7%AE%97%E6%B3%95)的优点：在进行启发式搜索提高算法效率的同时，可以保证找到一条最优路径（基于评估函数）。([维基百科](https://zh.wikipedia.org/wiki/A*%E6%90%9C%E5%AF%BB%E7%AE%97%E6%B3%95))
->
-> 估算函数为：
->
-> **f(n) = g(n) + h(n)**
->
-> **f(n)**指的是整个寻路过程中的动态估值总长度
->
-> **h(n)**指寻路过程**中途**某个节点到终点的距离
->
-> **g(n)**指寻路过程中起点到当前结点的距离
+A*算法
 
+- 启发式函数：**F(x) = G(x) + H(x)**
 
+  **F(x)**：评估这条路径是否是最短的，是贪心评估，找最小的
 
-​						![参考图](./pic/A*图.jpg)
+  **G(x)**：当前格子与**出发点**的距离，这个距离不是直接通过计算得来的，而是通过父格子的**G**值+1得来的
 
-- 整个算法的步骤如下：
+  **H(x)**：评估当前格子到**终点**的距离，这里我是通过曼哈顿距离求得
 
-  - 定义这几个数据结构，openList（可走的节点集合），closeList（已经被选过的节点集合)，节点有指向他的父节点的指针。
+  ​
 
-  - 1.当前节点(就是一开始的出发点)，扫描周围的可走路径，所得的节点必须不在**closeList**中，然后计算出最小的f(n);
+- 搜索过程
 
-  - 2.找出当前最小的那个节点后，看一下是否存在在**openList**中
+  先定义**openList**为待选择格子，**closeList**为已选择格子
 
-    - 如果不存在，直接把它加入**closeList**，其他的节点加入**openList**，并且设置他们的父节点为当前节点
+  - while(**closeList** 不包含 **目标格子**)
 
-    - 如果存在，将现在计算出来的g值与之前保存在**openList**里的g值比较，
+    - 计算当前格子的周围可走的格子的F(x)值
 
-      - 若小，则表明现在的是更优路径，把选中节点设置为当前节点，并加入**closeList**
+      - ？格子存在于**closeList**
+        - Y，丢弃
+        - N，？存在于**OpenList**
+          - N，直接加入**OpenList**
+          - Y，？当前计算的**G值**是否比存在于**OpenList**的**G值**小
+            - Y，更新**OpenList**中存在的格子的**G值**，并把它的**父格子**设置为当前的格子，这个步骤说明当前走的路径更佳。
+            - N，不作处理
 
-      - 若大于或者等于，处理逻辑和不存在的情况一样
+    - 从**openList**中找到**F值**最小的，加入**closeList**，把这个格子设置为当前格子，继续搜寻
 
-        以上这一步是为了找到离出发点更近的路，即动态搜寻更近的路径。
+      ​
 
-    3.如果第二步找不到合适的节点，直接从openList里寻找f(n)值最小的，设置为cur，然后继续搜索。
+- 几个注意的点
 
-  - 直到closeList里包含了目的地，整个搜寻过程结束。
+  - **G(x)**值是通过父格子的**G**值+1得来的
 
+  - 搜寻得到的是一个从终点到起点的链表，可以通过反向搜寻的方式，就可以直接得到我们要的起点到终点的链表
 
+  - **openList**，取出最小值的过程涉及排序，并且可能会出现更新**格子G值**的情况，这里我是通过二叉堆**PriorityQueue**的方式优化排序，需要重写**comparable**接口：
 
-> 不用担心此路不通的情况，不通的话会绕回通的地方，这个时候**closelist**的值可能会比较大，但是最后反向遍历的时候还是按照父结点最优路线来搜索路线的。
+    ```java
+    @Override
+    	public int compareTo(ASNode o) {
+    		if (o.getgValue() + o.gethValue() < this.getgValue() + this.gethValue()){
+    			return 1;
+    		} else {
+    			return -1;
+    		}
+    	}
+    ```
+
+  - **closeList**和**openList**都要求比较**格子**是否存在，这里用了一个HashMap来区别是否是同一个格子：
+
+    ```java
+    	Map<ASNode, ASNode> closeMap = new HashMap<>();
+    	Map<ASNode, ASNode> openMap = new HashMap<>();
+
+    	@Override
+    	public int hashCode() {
+    		return value.hashCode();	//value是Grid(格子)
+    	}
+    ```
+
+    ​
 
 - 参考[A星](http://blog.csdn.net/hitwhylz/article/details/23089415)
 
