@@ -2,9 +2,10 @@
 
 ####1.统计相同字段出现的次数
 ```
-cat access.log | awk '{print $1}' | uniq -c | awk '{if($1=='1'){ print $0}}'
+cat access.log | awk '{print $1}' | sort -n | uniq -c | awk '{if($1=='1'){ print $0}}'
 ```
 首先**第一个awk**抽出要统计的重复次数的字段，
+然后**sort -n**排序，因为必须先排序才能继续下一步,
 然后**uniq -c**统计重复行出现的次数，并在旁边列出
 然后**第二个awk**可以统计我们要的特定的重复行的输出
 还可以用**wc -l**统计行数。
