@@ -137,8 +137,8 @@ takeTask():
     }`
 	
 ```
-1.从**PiorityQueue**队列里取任务执行,这里执行的才是正经的任务队列;
-2.如果1没有任务，从**BlockingQueue**取任务执行，这里其实就是把**BlockingQueue**的任务挪动到**PiorityQueue**里去，由于是同一个线程，自然不存在兵法问题。使用**BlockingQueue**作为中转，实现了无锁**PiorityQueue**
+- 1.从**PiorityQueue**队列里取任务执行,这里执行的才是正经的任务队列;
+- 2.如果1没有任务，从**BlockingQueue**取任务执行，这里其实就是把**BlockingQueue**的任务挪动到**PiorityQueue**里去，由于是同一个线程，自然不存在兵法问题。使用**BlockingQueue**作为中转，实现了无锁**PiorityQueue**
 
 顺便再看一下GlobalEventExecutor里inEventLoop的实现()
 ```
