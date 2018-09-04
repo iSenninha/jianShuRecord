@@ -305,5 +305,44 @@ private enum State {
    ```
  至此，HttpHeader Server端的解码就解析完成了。
 
-##### 3.Http服务端Encode编码实现
- 服务端的编码，其实就是构造Response。按照和Request的一样的思路来。重点实现是在**HttpObjectEncoder**。
+#### 3.常见http请求类型
+##### 3.1 GET URL带参数
+参数直接在url里，即编码后是在**header**的第一行。
+```
+	GET /?param=s&param=1
+```
+
+##### 3.2 POST 传参
+用**POST**传参的情况下，如果你仍然在url里传递参数也是可以的,postman默认就这么搞。这种情况下，参数的请求情况是和**GET**一样的。
+如果用**body**传参数的话，格式是这样的：
+- 首先在header的**Content-Type**里会表明类型:
+```
+	Content-Type: multipart/form-data; boundary=-------------------xxxx
+```
+声明类型，然后声明**boundary**
+
+- 然后在header结束后的body是这样的:
+```
+	-------------------xxxx
+	Content-Disposition: from-data; name="key"
+	
+	value
+	-------------------xxxx
+	Content-Disposition: from-data; name="key1"
+	
+	value1
+	-------------------xxxx--
+```
+通过boundary分割开来，然后最后一值结束后的boundary多加了**--**
+
+##### 3.3 上传文件
+如果是上传文件的话，body的格式与3.2有些许不同
+```
+	-------------------xxxx
+	Content-Disposition: from-data; name="iamfile"; filename="fileName"
+	Content-Type: application/octet-stream
+
+	文件字节流
+	-------------------xxxx--
+```
+主要是多了一个参数说明文件名字，并且多了一行说明字节流格式
