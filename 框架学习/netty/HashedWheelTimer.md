@@ -2,7 +2,7 @@
 HashedWheelTimer是更适合用于I/O等待的定时器。
 高效之处在于通过一个叫**wheel**的数据结构。在这里简化为一个哈希表，通过哈希dead line，把”相同“deadline时间的任务分配到同一个bucket上。每一次tick的时候，只检查当前处于超时区间的bucket，更高效地执行超时任务。
 
-####1.几个重要的成员变量
+#### 1.几个重要的成员变量
 ```
     // 每一次tick的间隔时间
     private final long tickDuration;
@@ -18,7 +18,7 @@ HashedWheelTimer是更适合用于I/O等待的定时器。
     private final Worker worker = new Worker();
 ```
 
-####2.定时任务添加
+#### 2.定时任务添加
 ```
 @Override
     public Timeout newTimeout(TimerTask task, long delay, TimeUnit unit) {
