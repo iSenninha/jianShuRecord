@@ -57,7 +57,7 @@ UnpooledDataSource.java
     return popConnection(dataSource.getUsername(), dataSource.getPassword()).getProxyConnection();
   }
 ```
-可以看到，这里是直接走到**popConnection()**方法里，pop，顾名思义，这里是从一个队列里获取的
+可以看到，这里是直接走到**popConnection**方法里，pop，顾名思义，这里是从一个队列里获取的
 
 popConnection()
 ```
@@ -205,4 +205,4 @@ publicc PooledConnection(Connection connection, PooledDataSource dataSource) {
   }
 ```
 
-所以总体思路也清晰了，**PooledState**里有连接资源，包括空闲和活跃，然后想获取连接的时候，从这个资源队列里获取。关闭的时候，通过动态代理，走的是还回给连接池，而不是直接关闭。在获取的时候，会通过pingQuery去检查连接是否可用，那么就意味着一次查询，起码要有两次query了。并且在复用连接的时候，会通过检查是否自动commit，如果不是，会进行rollback操作。并且每一个连接被获取的时候，会有一个时间戳，如果超时未返还，可能会被之后的连接申请抢占。
+​	所以总体思路也清晰了，**PooledState**里有连接资源，包括空闲和活跃，然后想获取连接的时候，从这个资源队列里获取。关闭的时候，通过动态代理，走的是还回给连接池，而不是直接关闭。在获取的时候，会通过pingQuery去检查连接是否可用，那么就意味着一次查询，起码要有两次query了。并且在复用连接的时候，会通过检查是否自动commit，如果不是，会进行rollback操作。并且每一个连接被获取的时候，会有一个时间戳，如果超时未返还，可能会被之后的连接申请抢占。

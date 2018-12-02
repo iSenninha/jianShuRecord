@@ -1,11 +1,13 @@
-###Mybatis的类型处理器TypeHandler
+### Mybatis的类型处理器TypeHandler
+
 > Mybatis的类型处理器，类似于**编解码**处理器，为什么说是编解码呢？
 **DB-->Java**理解成解码，那么**Java-->DB**不就是编码了吗。从这个角度来说，更容易理解。
 
 <br>
 <br>
 
-####类图
+#### 类图
+
 ![uml图](./pic/mybatis_typehandler_uml.png)
 
 - TypeHandler里有如下接口：
@@ -33,8 +35,10 @@ public class ShortTypeHandler extends BaseTypeHandler<Short>
 ```
 BaseTypeHandler是继承了TypeReference的，所以上面那段代码将获取到**Short**这个类型。
 
-####例子
+#### 例子
+
 继承**BaseTypeHandler**即可简单实现一个处理器:
+
 ```
 public class SenninhaTypeHandler extends BaseTypeHandler<String>{
     private static org.slf4j.Logger logger = LoggerFactory.getLogger(SenninhaTypeHandler.class);
@@ -78,3 +82,4 @@ public class SenninhaTypeHandler extends BaseTypeHandler<String>{
     </resultMap>
 ```
 配置文件里指定了用我们自己定义的**SenninhaTypeHandler**去处理(编解码)处理
+
