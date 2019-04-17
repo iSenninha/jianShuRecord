@@ -15,7 +15,7 @@ fi
 
 headers=$(curl -I -s $2 | grep Content-Length: | awk '{print $2}')
 length=${#headers}
-let "length=length-2"
+let "length=length-1"
 length=${headers:0:$length}
 start=0
 let "start=length-$1*1024*1024"
