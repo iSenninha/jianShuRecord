@@ -43,8 +43,8 @@ do
     then
         start=0
     else
-        # not first loop, let start = (last query length) + 1
-        let "start=tmpLength+1"
+        # not first loop, let start = (last query length)
+        let "start=tmpLength"
     fi
     if [ ${#path} -eq 0 ]
     then
