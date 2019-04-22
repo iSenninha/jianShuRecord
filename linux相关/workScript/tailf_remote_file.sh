@@ -33,7 +33,11 @@ do
         continue
     fi
     
-    if [ $start -eq 0 ]
+    if [ $length -lt $tmpLength ]
+    then
+        # log switch file,just let start=0
+        let "start=0"
+    elif [ $start -eq 0 ]
     then
         # first loop, download last 1024 bytes
         let "start=length-1024"
@@ -46,6 +50,7 @@ do
         # not first loop, let start = (last query length)
         let "start=tmpLength"
     fi
+
     if [ ${#path} -eq 0 ]
     then
         # don't need to save the file
