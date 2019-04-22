@@ -52,7 +52,7 @@ do
         curl -s --header "Range: bytes=$start-$length" ${filename}
     else
         realPathFile=${path}"/"${filename##*/}
-        curl -s --header "Range: bytes=$start-$length" ${filename} | tee -a ${path}"/"${filename##*/}
+        curl -s --header "Range: bytes=$start-$length" ${filename} | tee -a ${realPathFile}}
     fi
     tmpLength=$length
     sleep $second
