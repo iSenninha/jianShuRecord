@@ -115,5 +115,21 @@ keys pattern
 ```
 
 
+##### 6.bitcount
+首先
+```
+set abit 1
+get abit = 1
+bitcount = 3
+```
+why bitcount = 3 ? 因为储存的是ascii啦，1就是49，那么，二进制就是**110001**。为了验证这个,我们：
+```
+setbit abit 6 1
+get abit = 3 (00110011(ascii的3))
+```
+所以，他的偏移量是从左边开始算的，第一个位置是0。
+
+
+
 
 基本的key-value用法就到这里啦。
